@@ -116,7 +116,7 @@ async function run() {
         })
 
         // instructor related apis
-        app.get('/instructorCanGet', verifyJWT, verifyInstructor, async (req, res) => {
+        app.get('/instructorClasses', verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
@@ -139,7 +139,7 @@ async function run() {
         })
 
         // admin related apis
-        app.get('/adminCanGet', verifyJWT, verifyAdmin, async (req, res) => {
+        app.get('/adminCanGetAllClasses', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.query.email;
             if (!email) {
                 res.send([]);
@@ -151,6 +151,21 @@ async function run() {
             };
 
             const result = await instructorClassesCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.get('/adminCanGetAllUsers', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                res.send([]);
+            }
+
+            const decodedEmail = req.decoded.email;
+            if (email !== decodedEmail) {
+                return res.status(403).send({ error: true, message: 'forbidden access' });
+            };
+
+            const result = await userCollection.find().toArray();
             res.send(result);
         })
 
