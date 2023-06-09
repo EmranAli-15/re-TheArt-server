@@ -2,7 +2,7 @@ const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -49,6 +49,7 @@ async function run() {
 
         const userCollection = client.db("summer-vacation").collection("users");
         const instructorClassesCollection = client.db("summer-vacation").collection("classes");
+        const selectedClassesCollection = client.db("summer-vacation").collection("selected");
 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -77,25 +78,40 @@ async function run() {
         }
 
 
-        // user related apis
-        app.post('/users', async (req, res) => {
-            const user = req.body;
-            const exist = { email: user.email };
-            const isExist = await userCollection.findOne(exist);
-            if (isExist) {
-                return res.send({ message: 'user already exist, please login' });
-            }
-            const result = await userCollection.insertOne(user);
+        app.get('/allClasses', async (req, res) => {
+            const filter = { status: 'approved' };
+            const result = await instructorClassesCollection.find(filter).toArray();
             res.send(result);
         })
 
+        // user related apis
+        app.get('/selectedClass/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await selectedClassesCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/selectedClass', verifyJWT, async (req, res) => {
+            const classes = req.body;
+            const result = selectedClassesCollection.insertOne(classes);
+            res.send(result);
+        })
+
+        app.post('/selectedClasses', verifyJWT, async (req, res) => {
+            const classes = req.body;
+            const query = { _id: { $in: classes.selectedClasses.map(id => new ObjectId(id)) } };
+            const result = await instructorClassesCollection.find(query).toArray();
+            res.send(result);
+        })
+
+
+        // dashboard access related apis
         app.get('/users/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-
             if (req.decoded.email !== email) {
                 res.send({ admin: false });
             }
-
             const query = { email: email };
             const user = await userCollection.findOne(query);
             const result = { admin: user?.role === 'admin' };
@@ -104,14 +120,23 @@ async function run() {
 
         app.get('/users/instructor/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-
             if (req.decoded.email !== email) {
                 res.send({ instructor: false });
             }
-
             const query = { email: email };
             const user = await userCollection.findOne(query);
             const result = { instructor: user?.role === 'instructor' };
+            res.send(result);
+        })
+
+        app.get('/users/student/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            if (req.decoded.email !== email) {
+                res.send({ student: false });
+            }
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            const result = { student: user?.role === 'student' };
             res.send(result);
         })
 
@@ -121,12 +146,10 @@ async function run() {
             if (!email) {
                 res.send([]);
             }
-
             const decodedEmail = req.decoded.email;
             if (email !== decodedEmail) {
                 return res.status(403).send({ error: true, message: 'forbidden access' });
             };
-
             const query = { instructorEmail: email };
             const result = await instructorClassesCollection.find(query).toArray();
             res.send(result);
@@ -144,12 +167,10 @@ async function run() {
             if (!email) {
                 res.send([]);
             }
-
             const decodedEmail = req.decoded.email;
             if (email !== decodedEmail) {
                 return res.status(403).send({ error: true, message: 'forbidden access' });
             };
-
             const result = await instructorClassesCollection.find().toArray();
             res.send(result);
         })
@@ -159,14 +180,24 @@ async function run() {
             if (!email) {
                 res.send([]);
             }
-
             const decodedEmail = req.decoded.email;
             if (email !== decodedEmail) {
                 return res.status(403).send({ error: true, message: 'forbidden access' });
             };
-
             const result = await userCollection.find().toArray();
             res.send(result);
+        })
+
+        app.patch('/updateClasses/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'approved'
+                }
+            }
+            const result = await instructorClassesCollection.updateOne(filter, updateDoc);
+            res.send(result)
         })
 
         // Send a ping to confirm a successful connection
