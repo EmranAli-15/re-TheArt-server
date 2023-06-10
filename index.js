@@ -200,6 +200,20 @@ async function run() {
             res.send(result)
         })
 
+        app.patch('/authorization', verifyJWT, verifyAdmin, async (req, res) => {
+            const data = req.body;
+            const role = data.instructor;
+            const id = data.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    role: role
+                }
+            }
+            const result = await userCollection.updateOne(filter, updateDoc);
+            res.send(result);
+        })
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
