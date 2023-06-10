@@ -94,7 +94,12 @@ async function run() {
 
         app.post('/selectedClass', verifyJWT, async (req, res) => {
             const classes = req.body;
-            const result = selectedClassesCollection.insertOne(classes);
+            const exist = { email: classes.email, dbId: classes.dbId };
+            const isExist = await selectedClassesCollection.findOne(exist);
+            if (isExist) {
+                return res.send('already added');
+            }
+            const result = await selectedClassesCollection.insertOne(classes);
             res.send(result);
         })
 
@@ -102,6 +107,13 @@ async function run() {
             const classes = req.body;
             const query = { _id: { $in: classes.selectedClasses.map(id => new ObjectId(id)) } };
             const result = await instructorClassesCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.post('/deleteClass', verifyJWT, async (req, res) => {
+            const data = req.body;
+            const query = { email: data.email, dbId: data.id };
+            const result = await selectedClassesCollection.deleteOne(query);
             res.send(result);
         })
 
