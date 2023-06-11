@@ -51,6 +51,7 @@ async function run() {
         const userCollection = client.db("summer-vacation").collection("users");
         const instructorClassesCollection = client.db("summer-vacation").collection("classes");
         const selectedClassesCollection = client.db("summer-vacation").collection("selected");
+        const paidClassesCollection = client.db("summer-vacation").collection("paid");
 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -82,6 +83,12 @@ async function run() {
         app.get('/allClasses', async (req, res) => {
             const filter = { status: 'approved' };
             const result = await instructorClassesCollection.find(filter).toArray();
+            res.send(result);
+        })
+
+        app.get('/popularClasses', async (req, res) => {
+            const classes = { status: 'approved' };
+            const result = await instructorClassesCollection.find(classes).limit(6).sort({ students: -1 }).toArray();
             res.send(result);
         })
 
@@ -135,11 +142,11 @@ async function run() {
             const result = await instructorClassesCollection.find(query).toArray();
             res.send(result);
         })
-        
-        app.post('/paidClasses', verifyJWT, async (req, res) => {
-            const classes = req.body;
-            const query = { _id: { $in: classes.paidClasses.map(id => new ObjectId(id)) } };
-            const result = await instructorClassesCollection.find(query).toArray();
+
+        app.get('/paidClasses/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await paidClassesCollection.find(query).toArray();
             res.send(result);
         })
 
@@ -147,13 +154,12 @@ async function run() {
             const data = req.body;
             const stId = data._id;
             const dbId = data.id;
+            const email = data.email;
+            const price = data.price
+            const date = new Date();
+            const paid = { price, email, date };
 
             const query = { _id: new ObjectId(stId) }
-            const updateDoc = {
-                $set: {
-                    status: 'paid'
-                }
-            }
 
             const filter = { _id: new ObjectId(dbId) }
             const getData = await instructorClassesCollection.findOne(filter);
@@ -172,9 +178,10 @@ async function run() {
                 }
             }
 
-            const result = await selectedClassesCollection.updateOne(query, updateDoc);
-            const resultOne = await instructorClassesCollection.updateOne(filter, update)
-            res.send({ result, resultOne });
+            const resultDelete = await selectedClassesCollection.deleteOne(query);
+            const resultPaid = await paidClassesCollection.insertOne(paid);
+            const resultUpdate = await instructorClassesCollection.updateOne(filter, update)
+            res.send({ resultDelete, resultPaid, resultUpdate });
         })
 
         app.post('/deleteClass', verifyJWT, async (req, res) => {
