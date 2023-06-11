@@ -85,6 +85,17 @@ async function run() {
             res.send(result);
         })
 
+        app.post('/createUser', async (req, res) => {
+            const user = req.body;
+            const exist = { email: user.email };
+            const isExist = await userCollection.findOne(exist);
+            if (isExist) {
+                return res.send({ message: 'user already exist, please login' });
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        })
+
         // user related apis
         app.get('/selectedClass/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
@@ -129,21 +140,31 @@ async function run() {
             const data = req.body;
             const stId = data._id;
             const dbId = data.id;
+
             const query = { _id: new ObjectId(stId) }
             const updateDoc = {
                 $set: {
                     status: 'paid'
                 }
             }
+
             const filter = { _id: new ObjectId(dbId) }
-            const getSeats = await instructorClassesCollection.findOne(filter);
-            const preSeats = getSeats.seats;
+            const getData = await instructorClassesCollection.findOne(filter);
+            const preSeats = getData.seats;
             const newSeats = preSeats - 1;
+
+            if (newSeats <= 0) {
+                return res.send('Seats not available');
+            }
+
+            const preStudents = getData.students;
+            const newStudents = preStudents + 1;
             const update = {
                 $set: {
-                    seats: newSeats
+                    seats: newSeats, students: newStudents
                 }
             }
+
             const result = await selectedClassesCollection.updateOne(query, updateDoc);
             const resultOne = await instructorClassesCollection.updateOne(filter, update)
             res.send({ result, resultOne });
@@ -253,7 +274,7 @@ async function run() {
 
         app.patch('/authorization', verifyJWT, verifyAdmin, async (req, res) => {
             const data = req.body;
-            const role = data.instructor;
+            const role = data.role;
             const id = data.id;
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
