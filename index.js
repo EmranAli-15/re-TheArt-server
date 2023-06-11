@@ -92,6 +92,12 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/popularInstructors', async (req, res) => {
+            const query = { role: 'instructor' };
+            const result = await userCollection.find(query).limit(6).toArray();
+            res.send(result);
+        })
+
         app.post('/createUser', async (req, res) => {
             const user = req.body;
             const exist = { email: user.email };
@@ -129,7 +135,7 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/getOneClass', async (req, res) => {
+        app.post('/getOneClass', verifyJWT, async (req, res) => {
             const classes = req.body;
             const query = { email: classes.email, dbId: classes.id };
             const result = await selectedClassesCollection.findOne(query);
