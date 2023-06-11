@@ -88,7 +88,14 @@ async function run() {
         // user related apis
         app.get('/selectedClass/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-            const query = { email: email }
+            const query = { email: email, status: 'selected' }
+            const result = await selectedClassesCollection.find(query).toArray();
+            res.send(result);
+        })
+
+        app.get('/paidClass/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email, status: 'paid' }
             const result = await selectedClassesCollection.find(query).toArray();
             res.send(result);
         })
@@ -116,6 +123,30 @@ async function run() {
             const query = { _id: { $in: classes.selectedClasses.map(id => new ObjectId(id)) } };
             const result = await instructorClassesCollection.find(query).toArray();
             res.send(result);
+        })
+
+        app.patch('/paidClass', verifyJWT, async (req, res) => {
+            const data = req.body;
+            const stId = data._id;
+            const dbId = data.id;
+            const query = { _id: new ObjectId(stId) }
+            const updateDoc = {
+                $set: {
+                    status: 'paid'
+                }
+            }
+            const filter = { _id: new ObjectId(dbId) }
+            const getSeats = await instructorClassesCollection.findOne(filter);
+            const preSeats = getSeats.seats;
+            const newSeats = preSeats - 1;
+            const update = {
+                $set: {
+                    seats: newSeats
+                }
+            }
+            const result = await selectedClassesCollection.updateOne(query, updateDoc);
+            const resultOne = await instructorClassesCollection.updateOne(filter, update)
+            res.send({ result, resultOne });
         })
 
         app.post('/deleteClass', verifyJWT, async (req, res) => {
