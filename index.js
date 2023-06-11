@@ -135,6 +135,13 @@ async function run() {
             const result = await instructorClassesCollection.find(query).toArray();
             res.send(result);
         })
+        
+        app.post('/paidClasses', verifyJWT, async (req, res) => {
+            const classes = req.body;
+            const query = { _id: { $in: classes.paidClasses.map(id => new ObjectId(id)) } };
+            const result = await instructorClassesCollection.find(query).toArray();
+            res.send(result);
+        })
 
         app.patch('/paidClass', verifyJWT, async (req, res) => {
             const data = req.body;
