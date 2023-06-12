@@ -52,6 +52,7 @@ async function run() {
         const instructorClassesCollection = client.db("summer-vacation").collection("classes");
         const selectedClassesCollection = client.db("summer-vacation").collection("selected");
         const paidClassesCollection = client.db("summer-vacation").collection("paid");
+        const feedbackCollection = client.db("summer-vacation").collection("feedbacks");
 
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -124,13 +125,6 @@ async function run() {
             const result = await selectedClassesCollection.find(query).toArray();
             res.send(result);
         })
-
-        // app.get('/paidClass/:email', verifyJWT, async (req, res) => {
-        //     const email = req.params.email;
-        //     const query = { email: email, status: 'paid' }
-        //     const result = await selectedClassesCollection.find(query).toArray();
-        //     res.send(result);
-        // })
 
         app.post('/selectedClass', verifyJWT, async (req, res) => {
             const classes = req.body;
@@ -244,6 +238,13 @@ async function run() {
         // -------------------------
         // instructor related apis
         // -------------------------
+        app.get('/deniedClasses/:email', verifyJWT, verifyInstructor, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await feedbackCollection.find(query).toArray();
+            res.send(result);
+        })
+
         app.get('/instructorClasses', verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.query.email;
             if (!email) {
@@ -305,6 +306,19 @@ async function run() {
             }
             const result = await instructorClassesCollection.updateOne(filter, updateDoc);
             res.send(result)
+        })
+
+        app.get('/getClassForFeedback/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await instructorClassesCollection.findOne(query);
+            res.send(result);
+        })
+
+        app.post('/deniedDetails', verifyJWT, verifyAdmin, async (req, res) => {
+            const data = req.body;
+            const result = await feedbackCollection.insertOne(data);
+            res.send(result);
         })
 
         app.patch('/authorization', verifyJWT, verifyAdmin, async (req, res) => {
