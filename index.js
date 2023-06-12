@@ -92,6 +92,12 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/allInstructors', async (req, res) => {
+            const query = { role: 'instructor' };
+            const result = await userCollection.find(query).toArray();
+            res.send(result);
+        })
+
         app.get('/popularInstructors', async (req, res) => {
             const query = { role: 'instructor' };
             const result = await userCollection.find(query).limit(6).toArray();
@@ -109,20 +115,22 @@ async function run() {
             res.send(result);
         })
 
+        // -----------------------------
         // user related apis
+        // -----------------------------
         app.get('/selectedClass/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-            const query = { email: email, status: 'selected' }
+            const query = { email: email }
             const result = await selectedClassesCollection.find(query).toArray();
             res.send(result);
         })
 
-        app.get('/paidClass/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const query = { email: email, status: 'paid' }
-            const result = await selectedClassesCollection.find(query).toArray();
-            res.send(result);
-        })
+        // app.get('/paidClass/:email', verifyJWT, async (req, res) => {
+        //     const email = req.params.email;
+        //     const query = { email: email, status: 'paid' }
+        //     const result = await selectedClassesCollection.find(query).toArray();
+        //     res.send(result);
+        // })
 
         app.post('/selectedClass', verifyJWT, async (req, res) => {
             const classes = req.body;
@@ -156,14 +164,14 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/paidClass', verifyJWT, async (req, res) => {
+        app.patch('/updatingForPay', verifyJWT, async (req, res) => {
             const data = req.body;
             const stId = data._id;
             const dbId = data.id;
             const email = data.email;
-            const price = data.price
+            const transactionId = data.transactionId
             const date = new Date();
-            const paid = { price, email, date };
+            const paid = { transactionId, email, date };
 
             const query = { _id: new ObjectId(stId) }
 
@@ -197,8 +205,9 @@ async function run() {
             res.send(result);
         })
 
-
+        // --------------------------------
         // dashboard access related apis
+        // --------------------------------
         app.get('/users/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             if (req.decoded.email !== email) {
@@ -232,7 +241,9 @@ async function run() {
             res.send(result);
         })
 
+        // -------------------------
         // instructor related apis
+        // -------------------------
         app.get('/instructorClasses', verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.query.email;
             if (!email) {
@@ -253,7 +264,9 @@ async function run() {
             res.send(result);
         })
 
+        // --------------------
         // admin related apis
+        // --------------------
         app.get('/adminCanGetAllClasses', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.query.email;
             if (!email) {
@@ -280,12 +293,14 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/updateClasses/:id', verifyJWT, verifyAdmin, async (req, res) => {
-            const id = req.params.id;
+        app.patch('/updateClassStatus', verifyJWT, verifyAdmin, async (req, res) => {
+            const data = req.body;
+            const id = data.id;
+            const status = data.status;
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
-                    status: 'approved'
+                    status: status
                 }
             }
             const result = await instructorClassesCollection.updateOne(filter, updateDoc);
